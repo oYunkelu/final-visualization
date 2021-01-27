@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <title>Microsoft Translator テキスト API で英訳を行うサンプルコード</title>
+    <meta charset="utf-8" />
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/0.9.0/p5.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/0.9.0/addons/p5.dom.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/0.9.0/addons/p5.sound.min.js"></script>
+    <!-- ml5 -->
+    <script src="https://unpkg.com/ml5@0.4.3/dist/ml5.min.js"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.1.1/jquery.min.js"></script>
+    <script src="googleSheets.js"></script>
+
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+
+    <script
+      async
+      defer
+      src="https://apis.google.com/js/api.js"
+      onload="handleClientLoad()"
+      onreadystatechange="if (this.readyState === 'complete') this.onload()"
+    ></script>
+    <script>
+      "use strict";
+
+      let msg = new SpeechSynthesisUtterance();
+      let voices = window.speechSynthesis.getVoices();
+
+      let text2 = [];
+      let text2_2 = [];
+      let text2_3 = [];
+      let datadata;
+      let csv = [];
+      let p = 1;
+      let section　= [];
+      let section_2 = [];
+      let section_3 = [];
+
+      let kamoku = [];
+      let list = [];
+      let date = [];
+      let date_2 = [];
+      let date_3 = [];
+      let jyanru = [];
+
+      let ninnsuu = 0;
+
+      $(function () {
+        // 文字が入力されたらイベント発火
+
+        const sheetId = "1275sysHIcvZBhD9aoRpPpNbrdlCHKg3jPp0a23IkYqI";
+        const range = "sheet1!A1:E100";
+        const max = 3;
+
+        $("#question").on("click", showdata);
+        async function showdata() {
+          datadata = await loadSheets(sheetId, range);
+          ninnsuu++;
+          $("#ninnsuu").text(ninnsuu+"人目");
+
+          jyanru[p] = datadata.values[p][3]; //[][]縦列・横列
+          //console.log(jyanru[p]);
+
+          let jyanru1 = $("#section1").val();
+          let jyanru2 = $("#section2").val();
+          let jyanru3 = $("#section3").val();
+
+          if(jyanru[p] == jyanru1){
+            text2[p] = datadata.values[p][1]; //[][]縦列・横列
+            section[p] = datadata.values[p][0]; //[][]縦列・横列
+            date[p] = datadata.values[p][2]; //[][]縦列・横列
+            $("#word").val(text2[p]);
+            console.log(section[p]);
+          }
+          else if(jyanru[p] == jyanru2){
+            text2_2[p] = datadata.values[p][1]; //[][]縦列・横列
+            section_2[p] = datadata.values[p][0]; //[][]縦列・横列
+            date_2[p] = datadata.values[p][2]; //[][]縦列・横列
+            $("#word").val(text2_2[p]);
+          }
+          else if(jyanru[p] == jyanru3){
+            text2_3[p] = datadata.values[p][1]; //[][]縦列・横列
+            section_3[p] = datadata.values[p][0]; //[][]縦列・横列
+            date_3[p] = datadata.values[p][2]; //[][]縦列・横列
+            $("#word").val(text2_3[p]);
+          }
+          /*text2[p] = datadata.values[p][1]; //[][]縦列・横列
+          section[p] = datadata.values[p][0]; //[][]縦列・横列
+          date[p] = datadata.values[p][2]; //[][]縦列・横列
+          jyanru[p] = datadata.values[p][3]; //[][]縦列・横列*/
+
+          //$("#word").val(text2[p]);
+          
+          $(function(){
+            $('.secList').on('click',function(){
+              $('.section').attr('id', 'myDiv');
+              $($(this).attr('href')).fadeToggle(800);
+              graph();
+            });
+          });
+          
+          //$("#word").val(text2[p]);
+
+          //jyanru[p] = $("#section"+p).text();
+          /*if(texttext[p] == kamoku[p]){
+            for(let pp=1; pp<=3; pp=pp+1){
+              $("#kamoku"+pp).css('opacity','0.7');
+            }
+            $("#kamoku"+p).css('opacity','1');
+          }*/
+
+          //p = p + 1;
+          //$("#word").change(function () {
+          // 現在の時刻をUNIX Time に変換して取得
+
+          const now = new Date();
+          const nowtime = now.getTime();
+
+          // 認証トークンを取得するための関数 [getToken] を定義
+          // http://docs.microsofttranslator.com/oauth-token.html
+
+          const getToken = function () {
+            const defer = $.Deferred();
+            const arr = JSON.parse(sessionStorage.getItem("tdata"));
+
+            if (arr === null || arr.time + 1000 * 60 * 8 < nowtime) {
+              $.ajax({
+                url: "https://api.cognitive.microsoft.com/sts/v1.0/issueToken",
+                type: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  Accept: "application/jwt",
+                  "Ocp-Apim-Subscription-Key":
+                    "9c134b3b94ca48309ff69985ee310cba"
+                },
+                async: false
+              }).done(function (data) {
+                const datalist = {
+                  time: nowtime,
+                  token: data
+                };
+                sessionStorage.setItem("tdata", JSON.stringify(datalist));
+              });
+            }
+
+            // sessionStorage に保存されたデータを変数 arr2 に格納
+            // JSONを文字列に変換後、トークンデータを引き出して翻訳用の関数にひきわたす
+
+            const arr2 = JSON.parse(sessionStorage.getItem("tdata"));
+            const token = arr2.token;
+            defer.resolve(token);
+            return defer.promise();
+          };
+
+          // 関数 [getToken] 実行後、取得したトークンを 受け取る
+          // フォームから入力したデータとともに、 Microsoft Translator テキストAPIへ送信
+
+          $.when(getToken()).done(function (token) {
+            const key = "Bearer " + token;
+            const text = $("#word").val();
+            const response = $.ajax({
+              url: "https://api.microsofttranslator.com/v2/http.svc/Translate",
+              type: "GET",
+              data: {
+                appid: key,
+                Accept: "application/xml",
+                text: text,
+                to: "en"
+              },
+              async: false
+            });
+
+            // Translator テキスト APIを通じて取得したデータから、翻訳語が含まれるプロパティを取得
+            // replace関数でタグを除去し、翻訳データのみを抽出して表示する
+
+            const data = response.responseText;
+            const translation = data.replace(
+              /<("[^"]*"|'[^']*'|[^'">])*>/g,
+              ""
+            );
+            $("#japanese").text(translation);
+            getSentiment();
+
+            p = p + 1;
+          });
+          //});
+        }
+      });
+
+      let sentiment;
+      let statusEl;
+      let submitBtn;
+      let inputBox;
+      let sentimentResult;
+
+      let score = [];
+      let score_2 = [];
+      let score_3 = [];
+
+      function setup() {
+        noCanvas();
+        sentiment = ml5.sentiment("movieReviews", modelReady);
+        //submitBtn = createButton("submit");
+        //sentimentResult = createP("sentiment score:");
+        //submitBtn.mousePressed(getSentiment);
+      }
+
+      function getSentiment() {
+        const text = $("#japanese").text();
+        const prediction = sentiment.predict(text);
+        //sentimentResult.html("Sentiment score: " + prediction.score);
+
+        $("#score").text("回答から感情を分析します score: " + prediction.score);
+
+        let jyanru1 = $("#section1").val();
+        let jyanru2 = $("#section2").val();
+        let jyanru3 = $("#section3").val();
+
+        if(jyanru[p] == jyanru1){
+          /*if (prediction.score > 0.5) {
+            score[p] = "Good"+Math.round(prediction.score*10)+"点";
+          } else {
+            score[p] = "Bad"+Math.round(prediction.score*10)+"点";
+          }*/
+          score[p] = prediction.score*10;
+        }   
+        else if(jyanru[p] == jyanru2){
+          /*if (prediction.score > 0.5) {
+            score_2[p] = "Good"+Math.round(prediction.score*10)+"点";
+          } else {
+            score_2[p] = "Bad"+Math.round(prediction.score*10)+"点";
+          }*/
+          score_2[p] = Math.round(prediction.score*10);
+        }else if(jyanru[p] == jyanru3){
+          /*if (prediction.score > 0.5) {
+            score_3[p] = "Good"+Math.round(prediction.score*10)+"点";
+          } else {
+            score_3[p] = "Bad"+Math.round(prediction.score*10)+"点";
+          }*/
+          score_3[p] = Math.round(prediction.score*10);
+        }
+        //score[p] = Math.round(prediction.score*10);
+
+        if (prediction.score > 0.5) {
+          //createP("💖🌟🌈 positive 👍");
+        } else {
+          //createP("🖤🌧️🌪️ negative 👎");
+        }
+      }
+
+      function modelReady() {
+        // model is ready
+        //statusEl.html("💡 model loaded");
+      }
+      
+      function koshin(){
+        location.reload();
+      }
+
+
+      function graph(){
+          var icon1 = {
+        width: 500,//500
+        height: 50,//600
+        path:
+          "M224 512c35.32 0 63.97-28.65 63.97-64H160.03c0 35.35 28.65 64 63.97 64zm215.39-149.71c-19.32-20.76-55.47-51.99-55.47-154.29 0-77.7-54.48-139.9-127.94-155.16V32c0-17.67-14.32-32-31.98-32s-31.98 14.33-31.98 32v20.84C118.56 68.1 64.08 130.3 64.08 208c0 102.3-36.15 133.53-55.47 154.29-6 6.45-8.66 14.16-8.61 21.71.11 16.4 12.98 32 32.1 32h383.8c19.12 0 32-15.6 32.1-32 .05-7.55-2.61-15.27-8.61-21.71z"
+      };
+
+      var layout = {
+        title:'Adding Names to Line and Scatter Plot',
+        modebardisplay: true,//false
+        width: 1000,
+        height: 800,
+        //padding: 10000,
+        font: {
+          size: 12//12
+        },
+        scene: {
+          aspectmode: "manual",
+          aspectratio: {
+            x: 1,//1
+            y: 0.7,//0.7
+            z: 1//1
+          },
+          camera: {
+            up: {
+              x: 0,//0
+              y: 0,//0
+              z: 1//1
+            },
+            center: {
+              x: 0,
+              y: 0,
+              z: 0
+            },
+            eye: {
+              x: 1.25,//1.25
+              y: 1.25,//1.25
+              z: 1.25//1.25
+            }
+          }
+        }
+      };
+
+      // var markerSize = [20, 40, 25, 10]
+      var markerSize = 10;//3
+      let rotate = 0;
+
+      //let t = score[1];
+      //let t = score[1];
+
+      //koshin();
+
+      //let tt = $("#score").text();
+
+      var trace1 = {
+        z: [score[1], score[2], score[3],score[4],score[5],score[6],score[7], score[8], score[9],score[10]],
+        y: [date[1], date[2], date[3],date[4],date[5],date[6],date[7], date[8], date[9],date[10]],
+        x: [section[1], section[2], section[3],section[4],section[5],section[6],section[7], section[8],section[9],section[10]],
+        mode: "markers",
+        type: "scatter3d",
+        name: '洋画',
+        marker: {
+          size: markerSize,
+          color: 'hotpink'
+        }
+      };
+      //console.log(score[0]);
+   
+
+      var trace2 = {
+        z: [score_2[1], score_2[2], score_2[3],score_2[4],score_2[5],score_2[6],score_2[7], score_2[8], score_2[9],score_2[10]],
+        y: [date_2[1], date_2[2], date_2[3],date_2[4],date_2[5],date_2[6], date_2[7],date_2[8],date_2[9],date_2[10]],
+        x: [section_2[1], section_2[2], section_2[3],section_2[4],section_2[5],section_2[6], section_2[7],section_2[8],section_2[9],section_2[10]],
+        mode: "markers",
+        type: "scatter3d",
+        name: 'ミステリー',
+        marker: {
+          size: markerSize,
+          //color: 'rgb(128, 0, 0)'
+          color: '#00aaff'
+        }
+      };
+      var trace3 = {
+        z: [score_3[1], score_3[2], score_3[3],score_3[4],score_3[5],score_3[6], score_3[7],score_3[8],score_3[9],score_3[10]],
+        y: [date_3[1], date_3[2], date_3[3],date_3[4],date_3[5],date_3[6], date_3[7],date_3[8],date_3[9],date_3[10]],
+        x: [section_3[1], section_3[2], section_3[3],section_3[4],section_3[5],section_3[6], section_3[7],section_3[8],section_3[9],section_3[10]],
+        mode: "markers",
+        type: "scatter3d",
+        name: 'ラブコメ',
+        marker: {
+          size: markerSize,
+          color: 'orange'
+        }
+      };
+
+      var config = {
+        modeBarButtonsToAdd: [
+          {
+            name: "rotate",
+            icon: icon1,
+            click: function (gd) {
+              setInterval(() => {
+                const newData = gd._fullLayout.scene._scene.getCamera();
+
+                const currentX = newData.eye.x;
+                const currentY = newData.eye.y;
+                const currentZ = newData.eye.z;
+
+                const newX =
+                  currentX * Math.cos(1 * (Math.PI / 180)) -
+                  currentY * Math.sin(1 * (Math.PI / 180));
+                const newY =
+                  currentX * Math.sin(1 * (Math.PI / 180)) +
+                  currentY * Math.cos(1 * (Math.PI / 180));
+
+                // console.log(currentX + " : " + currentY + " : " + currentZ)
+                // console.log(newX + " : " + newY)
+
+                const update = {
+                  x: newX,
+                  y: newY,
+                  z: currentZ
+                };
+
+                Plotly.relayout(gd, "scene.camera.eye", update);
+              }, 10);//10
+            }
+          }
+        ]
+      };
+
+      var data = [trace1, trace2, trace3];
+      //var data2 = [trace1];
+
+      Plotly.newPlot("myDiv", data, layout, config);
+      }
+
+      
+    </script>
+    <script
+      async
+      defer
+      src="https://apis.google.com/js/api.js"
+      onload="handleClientLoad()"
+      onreadystatechange="if (this.readyState === 'complete') this.onload()"
+    ></script>
+
+    <style>
+
+      h1{
+        text-align: center;
+      }
+      #question{
+        padding-top: -200px;
+        margin-left:20px;
+        width:200px;
+        height:50px;
+        color:#fff;
+        background-color: black;
+        font-size: 15px;
+        font-weight: bold;
+        text-align: center;
+        border-radius: 100vh;
+      }
+      #ninnsuu{
+        font-size:15px;
+      }
+      .kamoku{
+        display: inline-block;
+        /*background-color: pink;
+        /*width: 50px;
+        /*padding:20px;
+        margin:10px;*/
+
+        /*padding: 0.5em 1em;/*0.5em 1em*/
+        /*margin: 1em 0.5em;/*2em 0 */
+        /*font-weight: bold;
+        border: solid 2px #000000;
+        text-align: center;*/
+      }
+      .secList {
+        display: inline-block;
+        width: 150px;
+        /*padding:20px;*/
+        margin:10px;
+        padding: 0.3em 1em;
+        text-decoration: none;
+        color: black;
+        font-size: 20px;
+        font-weight: 550;
+        border: solid 3px black;
+        border-radius: 3px;
+        transition: .4s;
+      }
+  
+      .secList:hover {
+        /*background: #67c5ff;*/
+        color: white;
+      }
+
+      /*#kamoku1{
+        color:#fff;
+        background-color: black;
+        font-size: 25px;
+        font-weight: bold;
+        text-align: center;
+        border-radius: 100vh;
+      }*/
+      .shita-text{
+        margin-top: 20px;
+      }
+      #word{
+        margin-top: 30px;
+        margin-left: 20px;
+      }
+      textarea {
+	      font-size: 20px;
+        
+        padding: 0.5em 1em;
+        margin: 0em 0;/*2em*/
+        font-weight: bold;
+        border: solid 3px #000000;
+      }
+      #score{
+        margin-left:20px;
+      }
+      #japanese{
+        margin-left:20px;
+        color: #fff;
+      }
+
+      #myDiv{
+        margin-left:600;
+        padding-top:-80;
+        /*position:absolute; 
+        z-index: 2;*/
+      }
+      div {
+        font-size: 20px;
+      }
+      .yoko{
+        display: flex;
+        float: left;
+        /*padding-left: 350px;*/
+      }
+      .yoko-1{
+        /*display: flex;
+        float: left;*/
+        margin-top: 50px;
+        margin-left: 20px;
+      }
+      .yoko-2{
+        /*display: flex;
+        float: left;*/
+        margin-top: -20px;
+      }
+      .yoko-kamoku{
+        display: flex;
+        float: left;
+        margin-top:20px;
+        margin-left:10px;
+      }
+    </style>
+
+
+  </head>
+
+  <body>
+    <h1>✉▼アンケートボックス▼✉</h1>
+
+    <div class="yoko">
+    <div class="yoko-1">
+      <div class="que">
+        <button id="question">アンケート回答　<span id="ninnsuu">0人目</span></button>
+      </div>
+      <div class="yoko-kamoku">
+        <div class="kamoku" id="jyanru1"><button id="section1" class='secList' style="background-color: hotpink; opacity:0.7;" value="魔女の宅急便">魔女宅</button></div>
+        <div class="kamoku" id="jyanru2"><button id="section2" class='secList' style="background-color: #00aaff; opacity:0.7;" value="千と千尋の神隠し">千と千尋</button></div>
+        <div class="kamoku" id="jyanru3"><button id="section3" class='secList' style="background-color: orange; opacity:0.7;" value="となりのトトロ">トトロ</button></div>
+        <div class="kamoku"><button id="section4" class='secList' style="background-color: lightgreen; opacity:0.7;">グラフ</button></div>
+      </div>
+
+      <div class="shita-text">
+        <textarea id="word" placeholder="「アンケート回答　0人目」ボタンをクリックしてね" style="width:650px;height:300px;" rows=”3″ cols=”50″ wrap=”hard”></textarea>
+      </div>
+      <div id="score">回答から感情を分析します score:</div>
+      <div id="japanese"></div>
+    </div>
+
+    <div class="yoko-2">
+    
+      <div class="section" id="my" ></div>
+    </div>
+   
+  </body>
+</html>
